@@ -1,0 +1,210 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Video Capture Example</title>
+    <style>
+        body,
+        div,
+        p {
+            font: 400 14px/22px Roboto, sans-serif;
+        }
+
+        canvas,
+        img,
+        video {
+            border: 1px solid black;
+        }
+
+        td {
+            padding: 10px 0px 0px 10px;
+            text-align: center;
+        }
+
+        button {
+            display: inline-block;
+            color: #fff;
+            background-color: #337ab7;
+            border-color: #2e6da4;
+            padding: 6px 12px;
+            margin-bottom: 0;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            -ms-touch-action: manipulation;
+            touch-action: manipulation;
+            cursor: pointer;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            background-image: none;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+
+        button[disabled] {
+            cursor: not-allowed;
+            filter: alpha(opacity=65);
+            -webkit-box-shadow: none;
+            box-shadow: none;
+            opacity: .65;
+        }
+
+        .control {
+            margin-bottom: 3px;
+        }
+
+        .err {
+            color: red;
+            font-weight: bold;
+        }
+
+        .caption {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .code {
+            padding: 4px 6px;
+            margin: 4px 8px 4px 2px;
+            background-color: #FBFCFD;
+            border: 1px solid #C4CFE5;
+            font-family: monospace, fixed;
+            font-size: 13px;
+            min-height: 13px;
+            line-height: 1.0;
+            text-wrap: unrestricted;
+            padding-bottom: 0px;
+            margin: 0px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .small {
+            max-width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Video Capture Example</h2>
+    <p>
+        Click <b>Start/Stop</b> button to start or stop the camera capture.<br>
+        The <b>videoInput</b> is a &lt;video&gt; element used as OpenCV.js input.
+        The <b>canvasOutput</b> is a &lt;canvas&gt; element used as OpenCv.js output.<br>
+        The code of &lt;textarea&gt; will be executed when video is started.
+        You can modify the code to investigate more.
+    </p>
+    <div>
+        <div class="control"><button id="startAndStop">Start</button></div>
+    </div>
+    <p class="err" id="errorMessage"></p>
+    <div>
+        <table cellpadding="0" cellspacing="0" width="0" border="0">
+            <tbody>
+                <tr>
+                    <td>
+                        <video id="videoInput" width="320" height="240"></video>
+                    </td>
+                    <td>
+                        <canvas id="canvasOutput" width="320" height="240"></canvas>
+                    </td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="caption">videoInput</div>
+                    </td>
+                    <td>
+                        <div class="caption">canvasOutput</div>
+                    </td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <script async type="text/javascript" src="js/opencv.js"></script>
+    <script src="js/adapter.js" type="text/javascript"></script>
+    <script src="js/utils.js" type="text/javascript"></script>
+    
+    <script type="text/javascript">
+        function evalsrcipt() {
+            let video = document.getElementById('videoInput');
+            let src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+            let dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+            let cap = new cv.VideoCapture(video);
+
+            const FPS = 30;
+            function processVideo() {
+                try {
+                    if (!streaming) {
+                        // clean and stop.
+                        src.delete();
+                        dst.delete();
+                        return;
+                    }
+                    let begin = Date.now();
+                    // start processing.
+                    cap.read(src);
+                    cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+                    cv.imshow('canvasOutput', dst);
+                    // schedule the next one.
+                    let delay = 1000 / FPS - (Date.now() - begin);
+                    setTimeout(processVideo, delay);
+                } catch (err) {
+                    utils.printError(err);
+                }
+            };
+
+            // schedule the first one.
+            setTimeout(processVideo, 0);
+        }
+        let utils = new Utils('errorMessage');
+
+
+        let streaming = false;
+        let videoInput = document.getElementById('videoInput');
+        let startAndStop = document.getElementById('startAndStop');
+        let canvasOutput = document.getElementById('canvasOutput');
+        let canvasContext = canvasOutput.getContext('2d');
+
+        startAndStop.addEventListener('click', () => {
+            if (!streaming) {
+                utils.clearError();
+                utils.startCamera('qvga', onVideoStarted, 'videoInput');
+            } else {
+                utils.stopCamera();
+                onVideoStopped();
+            }
+        });
+
+        function onVideoStarted() {
+            streaming = true;
+            startAndStop.innerText = 'Stop';
+            videoInput.width = videoInput.videoWidth;
+            videoInput.height = videoInput.videoHeight;
+            evalsrcipt()
+        }
+
+        function onVideoStopped() {
+            streaming = false;
+            canvasContext.clearRect(0, 0, canvasOutput.width, canvasOutput.height);
+            startAndStop.innerText = 'Start';
+        }
+
+        utils.loadOpenCv(() => {
+            startAndStop.removeAttribute('disabled');
+        });
+    </script>
+
+
+</body>
+
+</html>
